@@ -1,0 +1,72 @@
+name: Deploy App with Terraform
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "Deployment Stage (dev/prod)"
+        required: true
+        default: "dev"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repo
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # Step 2: Configure AWS
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+
+      # Step 3: Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      # Step 4: Terraform Init
+      - name: Terraform Init
+        run: terraform init
+
+      # Step 5: Terraform Apply
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -var="stage=${{ github.event.inputs.stage }}"
+
+      # Step 6: Get EC2 Public IP
+      - name: Get EC2 IP
+        id: ec2
+        run: echo "EC2_IP=$(terraform output -raw ec2_public_ip)" >> $GITHUB_ENV
+
+      # Step 7: SSH into EC2 & Deploy App
+      - name: Deploy App on EC2
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ec2-user@${{ env.EC2_IP }} "sudo yum install -y git java-19-amazon-corretto-devel && git clone https://github.com/techeazy-consulting/techeazy-devops.git /home/ec2-user/app && cd /home/ec2-user/app && ./start.sh"
+
+      # Step 8: Upload Logs to S3
+      - name: Upload Logs
+        run: |
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ec2-user@${{ env.EC2_IP }} "aws s3 cp /var/log/cloud-init.log s3://$(terraform output -raw s3_bucket_name)/logs/cloud-init.log"
+
+      # Step 9: Health Check
+      - name: Validate App Health
+        run: |
+          for i in {1..10}; do
+            if curl -s http://${{ env.EC2_IP }}:80 > /dev/null; then
+              echo "App is Healthy ✅"
+              exit 0
+            fi
+            echo "Retrying..."
+            sleep 10
+          done
+          echo "App Deployment Failed ❌"
+          exit 1
