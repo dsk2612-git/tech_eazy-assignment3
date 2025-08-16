@@ -36,11 +36,18 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
-      # ⚠️ Step 5: Terraform Destroy (if resources already exist)
-      - name: Terraform Destroy Old Infra
-        run: terraform destroy -auto-approve -var="stage=${{ github.event.inputs.stage || 'dev'}}" || true
+      # ⚠️ Step 5: Try importing existing resources (ignore errors if not found)
+      - name: Terraform Import Existing Resources
+        run: |
+          set +e
+          terraform import aws_s3_bucket.private_bucket dsk2646565-${{ github.event.inputs.stage || 'dev' }} || true
+          terraform import aws_iam_role.s3_readonly_role s3-readonly-role-${{ github.event.inputs.stage || 'dev' }} || true
+          terraform import aws_iam_role.s3_fullaccess_role s3-fullaccess-role-${{ github.event.inputs.stage || 'dev' }} || true
+          terraform import aws_iam_policy.s3_readonly_policy arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:policy/s3-readonly-policy-${{ github.event.inputs.stage || 'dev' }} || true
+          terraform import aws_iam_policy.s3_fullaccess_policy arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:policy/s3-fullaccess-policy-${{ github.event.inputs.stage || 'dev' }} || true
+          set -e
 
-      # Step 6: Terraform Apply (create fresh infra)
+      # Step 6: Terraform Apply (create/update infra)
       - name: Terraform Apply
         run: terraform apply -auto-approve -var="stage=${{ github.event.inputs.stage || 'dev'}}"
 
