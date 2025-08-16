@@ -2,8 +2,13 @@
 # S3 Bucket (private)
 ##############################
 resource "aws_s3_bucket" "private_bucket" {
-  bucket        = "${var.bucket_name}-${var.stage}"
+  bucket        = "${var.bucket_name}-${trimspace(var.stage)}"
   force_destroy = true
+
+  tags = {
+    Name  = "private-bucket-${trimspace(var.stage)}"
+    Stage = trimspace(var.stage)
+  }
 }
 
 resource "aws_s3_bucket_acl" "private_acl" {
