@@ -38,7 +38,7 @@ jobs:
 
       # Step 5: Terraform Apply
       - name: Terraform Apply
-        run: terraform apply -auto-approve -var="stage=${{ github.event.inputs.stage }}"
+        run: terraform apply -auto-approve -var="stage=${{ github.event.inputs.stage || 'dev'}} "
 
       # Step 6: Get EC2 Public IP
       - name: Get EC2 IP
