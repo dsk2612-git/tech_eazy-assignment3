@@ -11,10 +11,14 @@ resource "aws_s3_bucket" "private_bucket" {
   }
 }
 
-resource "aws_s3_bucket_acl" "private_acl" {
+resource "aws_s3_bucket_ownership_controls" "ownership" {
   bucket = aws_s3_bucket.private_bucket.id
-  acl    = "private"
+
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
 }
+
 
 ##############################
 # S3 Lifecycle Rule
