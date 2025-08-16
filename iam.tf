@@ -11,6 +11,11 @@ resource "aws_iam_role" "s3_readonly_role" {
       Action = "sts:AssumeRole"
     }]
   })
+
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes        = [name]
+  }
 }
 
 resource "aws_iam_policy" "s3_readonly_policy" {
@@ -23,6 +28,11 @@ resource "aws_iam_policy" "s3_readonly_policy" {
       Resource = "*"
     }]
   })
+
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes        = [name]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "readonly_attach" {
@@ -33,6 +43,11 @@ resource "aws_iam_role_policy_attachment" "readonly_attach" {
 resource "aws_iam_instance_profile" "readonly_instance_profile" {
   name = "readonly-instance-profile-${trimspace(var.stage)}"
   role = aws_iam_role.s3_readonly_role.name
+
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes        = [role, name]
+  }
 }
 
 ##############################
@@ -48,6 +63,11 @@ resource "aws_iam_role" "s3_fullaccess_role" {
       Action = "sts:AssumeRole"
     }]
   })
+
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes        = [name]
+  }
 }
 
 resource "aws_iam_policy" "s3_fullaccess_policy" {
@@ -67,6 +87,11 @@ resource "aws_iam_policy" "s3_fullaccess_policy" {
       }
     ]
   })
+
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes        = [name]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "fullaccess_attach" {
